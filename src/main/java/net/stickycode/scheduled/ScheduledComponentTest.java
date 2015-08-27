@@ -15,6 +15,9 @@ package net.stickycode.scheduled;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.StrictAssertions.assertThat;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+
 import javax.inject.Inject;
 
 import org.junit.Test;
@@ -28,7 +31,6 @@ public class ScheduledComponentTest {
 
   protected void configure(ScheduleTestObject instance) {
     StickyBootstrap.crank(this, getClass()).inject(instance);
-
   }
 
   @Inject
@@ -37,8 +39,13 @@ public class ScheduledComponentTest {
   @Inject
   ConfigurationSystem system;
 
+  @Inject
+  ScheduledRunnableRepository schedules;
+
   @Test
-  public void verifyScheduling() {
+  public void verifyScheduling()
+      throws InterruptedException {
+
     ScheduleTestObject instance = new ScheduleTestObject();
     configure(instance);
 
@@ -48,10 +55,19 @@ public class ScheduledComponentTest {
 
     system.start();
 
-    assertThat(configurations).hasSize(2);
+    assertThat(configurations).hasSize(4);
     Configuration c = configurations.iterator().next();
-    assertThat(c).hasSize(1);
+    assertThat(c).hasSize(2);
 
+    ScheduledExecutorService pool = Executors.newSingleThreadScheduledExecutor();
+    for (ScheduledRunnable runnable : schedules) {
+      Schedule s = runnable.getSchedule();
+      if (s.isEnabled())
+        pool.scheduleAtFixedRate(runnable, s.getInitialDelay(), s.getPeriod(), s.getUnits());
+    }
+    Thread.sleep(1000);
+    assertThat(instance.counter.get()).isGreaterThan(1);
+    assertThat(instance.failCounter.get()).isEqualTo(1);
+    assertThat(instance.retryCounter.get()).isGreaterThan(1);
   }
-
 }

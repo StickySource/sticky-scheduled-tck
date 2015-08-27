@@ -12,14 +12,38 @@
  */
 package net.stickycode.scheduled;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import net.stickycode.exception.TransientException;
 import net.stickycode.stereotype.scheduled.Scheduled;
 
 public class ScheduleTestObject {
 
-  int counter = 0;
+  private Logger log = LoggerFactory.getLogger(getClass());
+
+  AtomicInteger counter = new AtomicInteger(0);
+
+  AtomicInteger failCounter = new AtomicInteger(0);
+
+  AtomicInteger retryCounter = new AtomicInteger(0);
 
   @Scheduled
   public void runIt() {
-    counter++;
+    log.info("runIt {}", counter.incrementAndGet());
+  }
+
+  @Scheduled
+  public void fail() {
+    log.info("fail {}", failCounter.incrementAndGet());
+    throw new RuntimeException();
+  }
+
+  @Scheduled
+  public void retry() {
+    log.info("retry {}", retryCounter.incrementAndGet());
+    throw new TransientException("oops:");
   }
 }
